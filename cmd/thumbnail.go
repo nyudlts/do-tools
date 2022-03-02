@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/nyudlts/go-aspace"
 	"github.com/spf13/cobra"
+	"os"
+	"strings"
+	"time"
 )
 
 func init() {
@@ -25,6 +29,7 @@ var thumbnailCmd = &cobra.Command{
 
 type Result struct {
 	Code string
+	URI  string
 	Msg  string
 }
 
@@ -37,9 +42,19 @@ func removeThumbs() {
 		go removeThumbnails(chunk, resultChannel, i+1)
 	}
 
+	t := time.Now()
+	tf := t.Format("20060102-15-04")
+	outfile, err := os.Create("thumbnail-updated" + tf + ".log")
+	if err != nil {
+		panic(err)
+	}
+	defer outfile.Close()
+
+	writer := bufio.NewWriter(outfile)
 	for range chunks {
 		for _, result := range <-resultChannel {
-			fmt.Printf("%v\n", result)
+			writer.WriteString(fmt.Sprintf("%s\t%s\t%v\n", result.Code, result.URI, result.Msg))
+			writer.Flush()
 		}
 	}
 
@@ -54,27 +69,38 @@ func removeThumbnails(chunk []DigitalObjectIDs, resultChannel chan []Result, wor
 		}
 		do, err := client.GetDigitalObject(doid.RepoID, doid.DOID)
 		if err != nil {
-			results = append(results, Result{"ERROR", err.Error()})
+			results = append(results, Result{"ERROR", do.URI, err.Error()})
 			continue
 		}
 
 		if len(do.FileVersions) > 0 {
 			if checkForRole("image-thumbnail", do.FileVersions) == true {
-				//update the do
+				//delete any dos that only have a thumbnail
+				if len(do.FileVersions) == 0 {
+					response, err := client.DeleteDigitalObject(doid.RepoID, doid.DOID)
+					if err != nil {
+						results = append(results, Result{"ERROR", do.URI, err.Error()})
+						continue
+					}
+					results = append(results, Result{"DELETED", do.URI, fmt.Sprintf("%v", response)})
+					continue
+				}
+
+				//update dos with more than one file versions
 				do.FileVersions = updateFileVersions(do)
 				response, err := client.UpdateDigitalObject(doid.RepoID, doid.DOID, do)
 				if err != nil {
-					results = append(results, Result{"ERROR", err.Error()})
+					results = append(results, Result{"ERROR", do.URI, err.Error()})
 					continue
 				}
-				results = append(results, Result{"SUCCESS", fmt.Sprintf("%v", response)})
+				results = append(results, Result{"UPDATED", do.URI, fmt.Sprintf("%v", strings.ReplaceAll(response, "\n", ""))})
 				continue
 			} else {
-				results = append(results, Result{"SKIPPED", fmt.Sprintf("%v", do.URI)})
+				results = append(results, Result{"SKIPPED", do.URI, fmt.Sprintf("%v", do.URI)})
 				continue
 			}
 		}
-		results = append(results, Result{"SKIPPED", fmt.Sprintf("%v", do.URI)})
+		results = append(results, Result{"SKIPPED", do.URI, ""})
 	}
 	fmt.Printf("Worker %d finished\n", worker)
 	resultChannel <- results
