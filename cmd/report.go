@@ -1,6 +1,6 @@
 package cmd
 
-func Report() {
+func ReportDOs() {
 	GetDOIDs()
 	doChunks := getChunks(dos)
 

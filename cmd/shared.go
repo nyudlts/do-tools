@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/nyudlts/go-aspace"
 	"log"
+	"os"
 )
 
 var (
@@ -18,7 +19,10 @@ type DigitalObjectIDs struct {
 }
 
 func Execute() {
-	fmt.Println("Hi")
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
 
 func GetRoles(chunk []DigitalObjectIDs, resultsChannel chan map[string]int, worker int) {
