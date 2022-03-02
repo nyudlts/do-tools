@@ -1,5 +1,21 @@
 package cmd
 
+import (
+	"fmt"
+	"github.com/spf13/cobra"
+)
+
+func init() {
+	rootCmd.AddCommand(reportCmd)
+}
+
+var reportCmd = &cobra.Command{
+	Use: "report",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("Report")
+	},
+}
+
 func ReportDOs() {
 	GetDOIDs()
 	doChunks := getChunks(dos)
