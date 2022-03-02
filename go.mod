@@ -1,17 +1,15 @@
-module github.com/dmnyu/do-tools
+module github.com/nyudlts/do-tools
 
 go 1.17
 
-require (
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/lestrrat-go/libxml2 v0.0.0-20201123224832-e6d9de61b80d // indirect
-	github.com/nyudlts/go-aspace v0.3.8-0.20220214182818-e92697d431b8 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
-	github.com/spf13/cobra v1.3.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
-)
+require github.com/nyudlts/go-aspace v0.3.8-0.20220214182818-e92697d431b8
 
-replace (
-	github.com/nyudlts/do-tools/cmd => /usr/local/go/src/github.com/nyudlts/do-tools/cmd
+require (
+	github.com/kr/pretty v0.2.0 // indirect
+	github.com/lestrrat-go/libxml2 v0.0.0-20201123224832-e6d9de61b80d // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/stretchr/testify v1.7.0 // indirect
+	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
