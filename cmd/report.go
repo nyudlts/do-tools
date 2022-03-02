@@ -12,7 +12,8 @@ func init() {
 }
 
 var reportCmd = &cobra.Command{
-	Use: "report",
+	Use:   "report",
+	Short: "Generate a report of use statements",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Running Role Report")
 		client, err = aspace.NewClient(config, "fade", 20)

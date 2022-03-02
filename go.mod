@@ -3,7 +3,7 @@ module github.com/nyudlts/do-tools
 go 1.17
 
 require (
-	github.com/nyudlts/go-aspace v0.3.8-0.20220214182818-e92697d431b8
+	github.com/nyudlts/go-aspace v0.3.8-0.20220302205834-cc83c3d33a3e
 	github.com/spf13/cobra v1.3.0
 )
 

@@ -31,6 +31,7 @@ type Result struct {
 	Code string
 	URI  string
 	Msg  string
+	Time time.Time
 }
 
 func removeThumbs() {
@@ -44,7 +45,7 @@ func removeThumbs() {
 
 	t := time.Now()
 	tf := t.Format("20060102-15-04")
-	outfile, err := os.Create("thumbnail-updated" + tf + ".log")
+	outfile, err := os.Create("thumbnail-updated" + tf + ".tsv")
 	if err != nil {
 		panic(err)
 	}
@@ -53,7 +54,7 @@ func removeThumbs() {
 	writer := bufio.NewWriter(outfile)
 	for range chunks {
 		for _, result := range <-resultChannel {
-			writer.WriteString(fmt.Sprintf("%s\t%s\t%v\n", result.Code, result.URI, result.Msg))
+			writer.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\n", result.Time.Format("20060102T15:04:05"), result.Code, result.URI, result.Msg))
 			writer.Flush()
 		}
 	}
@@ -67,22 +68,27 @@ func removeThumbnails(chunk []DigitalObjectIDs, resultChannel chan []Result, wor
 		if i > 0 && i%250 == 0 {
 			fmt.Printf("Worker %d has completed %d digital objects\n", worker, i)
 		}
+
+		//request the digital object
 		do, err := client.GetDigitalObject(doid.RepoID, doid.DOID)
 		if err != nil {
-			results = append(results, Result{"ERROR", do.URI, err.Error()})
+			results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now()})
 			continue
 		}
 
+		//check that there are file versions
 		if len(do.FileVersions) > 0 {
-			if checkForRole("image-thumbnail", do.FileVersions) == true {
+
+			//check for thumnbnails
+			if do.ContainsUseStatement("image-thumbnail") == true {
 				//delete any dos that only have a thumbnail
-				if len(do.FileVersions) == 0 {
+				if len(do.FileVersions) == 1 {
 					response, err := client.DeleteDigitalObject(doid.RepoID, doid.DOID)
 					if err != nil {
-						results = append(results, Result{"ERROR", do.URI, err.Error()})
+						results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now()})
 						continue
 					}
-					results = append(results, Result{"DELETED", do.URI, fmt.Sprintf("%v", response)})
+					results = append(results, Result{"DELETED", do.URI, fmt.Sprintf("%s", strings.ReplaceAll(response, "\n", "")), time.Now()})
 					continue
 				}
 
@@ -90,29 +96,20 @@ func removeThumbnails(chunk []DigitalObjectIDs, resultChannel chan []Result, wor
 				do.FileVersions = updateFileVersions(do)
 				response, err := client.UpdateDigitalObject(doid.RepoID, doid.DOID, do)
 				if err != nil {
-					results = append(results, Result{"ERROR", do.URI, err.Error()})
+					results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now()})
 					continue
 				}
-				results = append(results, Result{"UPDATED", do.URI, fmt.Sprintf("%v", strings.ReplaceAll(response, "\n", ""))})
+				results = append(results, Result{"UPDATED", do.URI, fmt.Sprintf("%s", strings.ReplaceAll(response, "\n", "")), time.Now()})
 				continue
 			} else {
-				results = append(results, Result{"SKIPPED", do.URI, fmt.Sprintf("%v", do.URI)})
+				results = append(results, Result{"SKIPPED", do.URI, fmt.Sprintf("No image-thumbnails in file versions"), time.Now()})
 				continue
 			}
 		}
-		results = append(results, Result{"SKIPPED", do.URI, ""})
+		results = append(results, Result{"SKIPPED", do.URI, "No file versions", time.Now()})
 	}
 	fmt.Printf("Worker %d finished\n", worker)
 	resultChannel <- results
-}
-
-func checkForRole(role string, versions []aspace.FileVersion) bool {
-	for _, version := range versions {
-		if version.UseStatement == role {
-			return true
-		}
-	}
-	return false
 }
 
 func updateFileVersions(do aspace.DigitalObject) []aspace.FileVersion {
