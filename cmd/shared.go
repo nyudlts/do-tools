@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/nyudlts/go-aspace"
 	"log"
@@ -11,6 +12,7 @@ var (
 	client  *aspace.ASClient
 	dos     = []DigitalObjectIDs{}
 	workers = 12
+	err     error
 )
 
 type DigitalObjectIDs struct {
@@ -41,7 +43,6 @@ func GetRoles(chunk []DigitalObjectIDs, resultsChannel chan map[string]int, work
 			for _, fileVersion := range fileVersions {
 				role := fileVersion.UseStatement
 				if role == "" {
-					fmt.Println(fileVersion.FileURI)
 					role = "undefined"
 				}
 				if HasRole(results, role) == true {
@@ -59,6 +60,20 @@ func PrintRoleMap(roles map[string]int) {
 	for k, v := range roles {
 		fmt.Printf("%s\t%d\n", k, v)
 	}
+}
+
+func GenerateRoleReport(roles map[string]int) {
+	outfile, err := os.Create("roles-report.tsv")
+	if err != nil {
+		panic(err)
+	}
+	defer outfile.Close()
+
+	writer := bufio.NewWriter(outfile)
+	for k, v := range roles {
+		writer.WriteString(fmt.Sprintf("%s\t%d\n", k, v))
+	}
+	writer.Flush()
 }
 
 func HasRole(roles map[string]int, role string) bool {

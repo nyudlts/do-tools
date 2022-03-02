@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/nyudlts/go-aspace"
 	"github.com/spf13/cobra"
 )
 
@@ -12,7 +13,9 @@ func init() {
 var reportCmd = &cobra.Command{
 	Use: "report",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Report")
+		fmt.Println("Running Role Report")
+		client, err = aspace.NewClient("/home/menneric/.config/go-aspace", "fade", 20)
+		ReportDOs()
 	},
 }
 
@@ -38,6 +41,6 @@ func ReportDOs() {
 			}
 		}
 	}
-
+	GenerateRoleReport(results)
 	PrintRoleMap(results)
 }
