@@ -7,6 +7,7 @@ import (
 )
 
 func init() {
+	reportCmd.PersistentFlags().StringVarP(&config, "config", "c", "", "")
 	rootCmd.AddCommand(reportCmd)
 }
 
@@ -14,7 +15,7 @@ var reportCmd = &cobra.Command{
 	Use: "report",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Running Role Report")
-		client, err = aspace.NewClient("/home/menneric/.config/go-aspace", "fade", 20)
+		client, err = aspace.NewClient(config, "fade", 20)
 		ReportDOs()
 	},
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/nyudlts/go-aspace"
 	"log"
 	"os"
+	"time"
 )
 
 var (
@@ -13,6 +14,7 @@ var (
 	dos     = []DigitalObjectIDs{}
 	workers = 12
 	err     error
+	config  string
 )
 
 type DigitalObjectIDs struct {
@@ -63,7 +65,9 @@ func PrintRoleMap(roles map[string]int) {
 }
 
 func GenerateRoleReport(roles map[string]int) {
-	outfile, err := os.Create("roles-report.tsv")
+	t := time.Now()
+	tf := t.Format("20060102-15-04")
+	outfile, err := os.Create("roles-report-" + tf + ".tsv")
 	if err != nil {
 		panic(err)
 	}
