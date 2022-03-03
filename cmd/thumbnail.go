@@ -28,10 +28,11 @@ var thumbnailCmd = &cobra.Command{
 }
 
 type Result struct {
-	Code string
-	URI  string
-	Msg  string
-	Time time.Time
+	Code   string
+	URI    string
+	Msg    string
+	Time   time.Time
+	Worker int
 }
 
 func removeThumbs() {
@@ -54,7 +55,7 @@ func removeThumbs() {
 	writer := bufio.NewWriter(outfile)
 	for range chunks {
 		for _, result := range <-resultChannel {
-			writer.WriteString(fmt.Sprintf("%s\t%s\t%s\t%s\n", result.Time.Format("20060102T15:04:05"), result.Code, result.URI, result.Msg))
+			writer.WriteString(fmt.Sprintf("%s\t%d\t%s\t%s\t%s\n", result.Time.Format(time.RFC3339), result.Worker, result.Code, result.URI, result.Msg))
 			writer.Flush()
 		}
 	}
@@ -72,7 +73,7 @@ func removeThumbnails(chunk []DigitalObjectIDs, resultChannel chan []Result, wor
 		//request the digital object
 		do, err := client.GetDigitalObject(doid.RepoID, doid.DOID)
 		if err != nil {
-			results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now()})
+			results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now(), worker})
 			continue
 		}
 
@@ -85,10 +86,10 @@ func removeThumbnails(chunk []DigitalObjectIDs, resultChannel chan []Result, wor
 				if len(do.FileVersions) == 1 {
 					response, err := client.DeleteDigitalObject(doid.RepoID, doid.DOID)
 					if err != nil {
-						results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now()})
+						results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now(), worker})
 						continue
 					}
-					results = append(results, Result{"DELETED", do.URI, fmt.Sprintf("%s", strings.ReplaceAll(response, "\n", "")), time.Now()})
+					results = append(results, Result{"DELETED", do.URI, fmt.Sprintf("%s", strings.ReplaceAll(response, "\n", "")), time.Now(), worker})
 					continue
 				}
 
@@ -96,17 +97,17 @@ func removeThumbnails(chunk []DigitalObjectIDs, resultChannel chan []Result, wor
 				do.FileVersions = updateFileVersions(do)
 				response, err := client.UpdateDigitalObject(doid.RepoID, doid.DOID, do)
 				if err != nil {
-					results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now()})
+					results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now(), worker})
 					continue
 				}
-				results = append(results, Result{"UPDATED", do.URI, fmt.Sprintf("%s", strings.ReplaceAll(response, "\n", "")), time.Now()})
+				results = append(results, Result{"UPDATED", do.URI, fmt.Sprintf("%s", strings.ReplaceAll(response, "\n", "")), time.Now(), worker})
 				continue
 			} else {
-				results = append(results, Result{"SKIPPED", do.URI, fmt.Sprintf("No image-thumbnails in file versions"), time.Now()})
+				results = append(results, Result{"SKIPPED", do.URI, fmt.Sprintf("No image-thumbnails in file versions"), time.Now(), worker})
 				continue
 			}
 		}
-		results = append(results, Result{"SKIPPED", do.URI, "No file versions", time.Now()})
+		results = append(results, Result{"SKIPPED", do.URI, "No file versions", time.Now(), worker})
 	}
 	fmt.Printf("Worker %d finished\n", worker)
 	resultChannel <- results
