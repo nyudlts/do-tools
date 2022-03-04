@@ -27,14 +27,6 @@ var thumbnailCmd = &cobra.Command{
 	},
 }
 
-type Result struct {
-	Code   string
-	URI    string
-	Msg    string
-	Time   time.Time
-	Worker int
-}
-
 func removeThumbs() {
 
 	chunks := getChunks(dos)
@@ -62,7 +54,7 @@ func removeThumbs() {
 
 }
 
-func removeThumbnails(chunk []DigitalObjectIDs, resultChannel chan []Result, worker int) {
+func removeThumbnails(chunk []ObjectID, resultChannel chan []Result, worker int) {
 	results := []Result{}
 	fmt.Printf("Worker %d started, processing %d records\n", worker, len(chunk))
 	for i, doid := range chunk {
@@ -71,7 +63,7 @@ func removeThumbnails(chunk []DigitalObjectIDs, resultChannel chan []Result, wor
 		}
 
 		//request the digital object
-		do, err := client.GetDigitalObject(doid.RepoID, doid.DOID)
+		do, err := client.GetDigitalObject(doid.RepoID, doid.ObjectID)
 		if err != nil {
 			results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now(), worker})
 			continue
@@ -84,7 +76,7 @@ func removeThumbnails(chunk []DigitalObjectIDs, resultChannel chan []Result, wor
 			if do.ContainsUseStatement("image-thumbnail") == true {
 				//delete any dos that only have a thumbnail
 				if len(do.FileVersions) == 1 {
-					response, err := client.DeleteDigitalObject(doid.RepoID, doid.DOID)
+					response, err := client.DeleteDigitalObject(doid.RepoID, doid.ObjectID)
 					if err != nil {
 						results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now(), worker})
 						continue
@@ -95,7 +87,7 @@ func removeThumbnails(chunk []DigitalObjectIDs, resultChannel chan []Result, wor
 
 				//update dos with more than one file versions
 				do.FileVersions = updateFileVersions(do)
-				response, err := client.UpdateDigitalObject(doid.RepoID, doid.DOID, do)
+				response, err := client.UpdateDigitalObject(doid.RepoID, doid.ObjectID, do)
 				if err != nil {
 					results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now(), worker})
 					continue

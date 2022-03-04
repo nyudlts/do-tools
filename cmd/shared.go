@@ -11,15 +11,27 @@ import (
 
 var (
 	client  *aspace.ASClient
-	dos     = []DigitalObjectIDs{}
+	dos     = []ObjectID{}
 	workers = 12
 	err     error
 	config  string
 )
 
-type DigitalObjectIDs struct {
-	RepoID int
-	DOID   int
+type ObjectID struct {
+	RepoID   int
+	ObjectID int
+}
+
+type Result struct {
+	Code   string
+	URI    string
+	Msg    string
+	Time   time.Time
+	Worker int
+}
+
+func (r Result) String() string {
+	return fmt.Sprintf("%s\t%d\t%s\t%s\t%s\n", r.Time.Format(time.RFC3339), r.Worker, r.Code, r.URI, r.Msg)
 }
 
 func Execute() {
@@ -29,14 +41,21 @@ func Execute() {
 	}
 }
 
-func GetRoles(chunk []DigitalObjectIDs, resultsChannel chan map[string]int, worker int) {
+func getClient() {
+	client, err = aspace.NewClient(config, "fade", 20)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func GetRoles(chunk []ObjectID, resultsChannel chan map[string]int, worker int) {
 	results := map[string]int{}
 	fmt.Printf("Worker %d processing %d records\n", worker, len(chunk))
 	for i, doid := range chunk {
 		if i > 0 && i%100 == 0 {
 			fmt.Printf("Worker %d has completed %d records\n", worker, i)
 		}
-		do, err := client.GetDigitalObject(doid.RepoID, doid.DOID)
+		do, err := client.GetDigitalObject(doid.RepoID, doid.ObjectID)
 		if err != nil {
 			log.Println(err.Error())
 		}
@@ -89,8 +108,8 @@ func HasRole(roles map[string]int, role string) bool {
 	return false
 }
 
-func getChunks(doids []DigitalObjectIDs) [][]DigitalObjectIDs {
-	var divided [][]DigitalObjectIDs
+func getChunks(doids []ObjectID) [][]ObjectID {
+	var divided [][]ObjectID
 
 	chunkSize := (len(doids) + workers - 1) / workers
 
@@ -113,7 +132,7 @@ func GetDOIDs() {
 			panic(err)
 		}
 		for _, digitalObjectID := range doIDs {
-			dos = append(dos, DigitalObjectIDs{repoId, digitalObjectID})
+			dos = append(dos, ObjectID{repoId, digitalObjectID})
 		}
 	}
 }
