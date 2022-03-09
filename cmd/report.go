@@ -1,13 +1,17 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
-	"github.com/nyudlts/go-aspace"
 	"github.com/spf13/cobra"
+	"log"
+	"os"
+	"time"
 )
 
 func init() {
 	reportCmd.PersistentFlags().StringVarP(&config, "config", "c", "", "")
+	reportCmd.PersistentFlags().StringVar(&env, "environment", "", "")
 	rootCmd.AddCommand(reportCmd)
 }
 
@@ -16,7 +20,7 @@ var reportCmd = &cobra.Command{
 	Short: "Generate a report of use statements",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Running Role Report")
-		client, err = aspace.NewClient(config, "fade", 20)
+		setClient()
 		ReportDOs()
 	},
 }
@@ -28,8 +32,11 @@ func ReportDOs() {
 	resultsChannel := make(chan map[string]int)
 
 	//get the dos
+	undefUrl, _ := os.Create("service-roles.tsv")
+	udefWriter := bufio.NewWriter(undefUrl)
+
 	for i, chunk := range doChunks {
-		go GetRoles(chunk, resultsChannel, i+1)
+		go GetRoles(chunk, resultsChannel, i+1, udefWriter)
 	}
 
 	results := map[string]int{}
@@ -45,4 +52,65 @@ func ReportDOs() {
 	}
 	GenerateRoleReport(results)
 	PrintRoleMap(results)
+}
+
+func GenerateRoleReport(roles map[string]int) {
+	t := time.Now()
+	tf := t.Format("20060102-15-04")
+	outfile, err := os.Create("roles-report-" + tf + ".tsv")
+	if err != nil {
+		panic(err)
+	}
+	defer outfile.Close()
+
+	writer := bufio.NewWriter(outfile)
+	for k, v := range roles {
+		writer.WriteString(fmt.Sprintf("%s\t%d\n", k, v))
+	}
+	writer.Flush()
+}
+
+func HasRole(roles map[string]int, role string) bool {
+	for k, _ := range roles {
+		if k == role {
+			return true
+		}
+	}
+	return false
+}
+
+func GetRoles(chunk []ObjectID, resultsChannel chan map[string]int, worker int, writer *bufio.Writer) {
+	results := map[string]int{}
+	fmt.Printf("Worker %d processing %d records\n", worker, len(chunk))
+	for i, doid := range chunk {
+		if i > 0 && i%100 == 0 {
+			fmt.Printf("Worker %d has completed %d records\n", worker, i)
+		}
+		do, err := client.GetDigitalObject(doid.RepoID, doid.ObjectID)
+		if err != nil {
+			log.Println(err.Error())
+		}
+		fileVersions := do.FileVersions
+		if len(fileVersions) > 0 {
+			for _, fileVersion := range fileVersions {
+				role := fileVersion.UseStatement
+				if role == "service" {
+					writer.WriteString(fmt.Sprintf("%s\t%s\n", do.URI, fileVersion.FileURI))
+					writer.Flush()
+				}
+				if HasRole(results, role) == true {
+					results[role] = results[role] + 1
+				} else {
+					results[role] = 1
+				}
+			}
+		}
+	}
+	resultsChannel <- results
+}
+
+func PrintRoleMap(roles map[string]int) {
+	for k, v := range roles {
+		fmt.Printf("%s\t%d\n", k, v)
+	}
 }

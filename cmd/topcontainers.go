@@ -24,7 +24,7 @@ var (
 var tcCmd = &cobra.Command{
 	Use: "top-containers",
 	Run: func(cmd *cobra.Command, args []string) {
-		getClient()
+		setClient()
 		getTCids()
 		tcChunks = getChunks(tcids)
 
