@@ -26,14 +26,12 @@ var (
 var updateCmd = &cobra.Command{
 	Use: "update-roles",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("UPDATE ROLES")
 		setClient()
 		updateRoles()
 	},
 }
 
 func updateRoles() {
-	fmt.Println("Updating Roles")
 	GetDOIDs()
 	doChunks := getChunks(dos)
 	resultChannel := make(chan []Result)
@@ -98,12 +96,14 @@ func updateFileVersionRoles(fvs []aspace.FileVersion) []aspace.FileVersion {
 	for _, fv := range fvs {
 		if fv.UseStatement == "electronic-records-service" {
 			fv.UseStatement = "electronic-records-reading-room"
+			fv.FileURI = "https://hdl.handle.net/2333.1/material-request-placeholder"
 			newFvs = append(newFvs, fv)
 			continue
 		}
 		if fv.UseStatement == "" || fv.UseStatement == "service" {
 			if aeonMatcher.MatchString(fv.FileURI) == true {
 				fv.UseStatement = "electronic-records-reading-room"
+				fv.FileURI = "https://hdl.handle.net/2333.1/material-request-placeholder"
 				newFvs = append(newFvs, fv)
 				continue
 			}

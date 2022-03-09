@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"log"
 	"os"
+	"sort"
 	"time"
 )
 
@@ -71,7 +72,7 @@ func GenerateRoleReport(roles map[string]int) {
 }
 
 func HasRole(roles map[string]int, role string) bool {
-	for k, _ := range roles {
+	for k := range roles {
 		if k == role {
 			return true
 		}
@@ -94,9 +95,8 @@ func GetRoles(chunk []ObjectID, resultsChannel chan map[string]int, worker int, 
 		if len(fileVersions) > 0 {
 			for _, fileVersion := range fileVersions {
 				role := fileVersion.UseStatement
-				if role == "service" {
-					writer.WriteString(fmt.Sprintf("%s\t%s\n", do.URI, fileVersion.FileURI))
-					writer.Flush()
+				if role == "" {
+					role = "undefined"
 				}
 				if HasRole(results, role) == true {
 					results[role] = results[role] + 1
@@ -110,7 +110,12 @@ func GetRoles(chunk []ObjectID, resultsChannel chan map[string]int, worker int, 
 }
 
 func PrintRoleMap(roles map[string]int) {
-	for k, v := range roles {
-		fmt.Printf("%s\t%d\n", k, v)
+	roleKeys := []string{}
+	for k := range roles {
+		roleKeys = append(roleKeys, k)
+	}
+	sort.Strings(roleKeys)
+	for _, k := range roleKeys {
+		fmt.Printf("%s\t%d\n", k, roles[k])
 	}
 }
