@@ -12,6 +12,7 @@ import (
 
 func init() {
 	tcCmd.PersistentFlags().StringVarP(&config, "config", "c", "", "")
+	tcCmd.PersistentFlags().StringVarP(&env, "environment", "e", "", "")
 	rootCmd.AddCommand(tcCmd)
 }
 
@@ -19,6 +20,7 @@ var (
 	tcids    = []ObjectID{}
 	tcChunks = [][]ObjectID{}
 	erecs    = regexp.MustCompile("electronic records")
+	erec     = regexp.MustCompile("electronic record")
 )
 
 var tcCmd = &cobra.Command{
@@ -61,7 +63,7 @@ func removeTopContainers(tcChunk []ObjectID, resultChannel chan []Result, worker
 			results = append(results, Result{"ERROR", "", err.Error(), time.Now(), worker})
 			continue
 		}
-		if erecs.MatchString(strings.ToLower(tc.DisplayString)) {
+		if erecs.MatchString(strings.ToLower(tc.DisplayString)) || erec.MatchString(strings.ToLower(tc.DisplayString)) {
 			msg, err := client.DeleteTopContainer(objectId.RepoID, objectId.ObjectID)
 			if err != nil {
 				results = append(results, Result{"ERROR", tc.URI, err.Error(), time.Now(), worker})
