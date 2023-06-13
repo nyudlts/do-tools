@@ -12,13 +12,15 @@ import (
 
 func init() {
 	thumbnailCmd.PersistentFlags().StringVarP(&config, "config", "c", "", "")
+	thumbnailCmd.PersistentFlags().StringVarP(&env, "environment", "e", "", "")
+	thumbnailCmd.PersistentFlags().BoolVar(&test, "test", false, "")
 	rootCmd.AddCommand(thumbnailCmd)
 }
 
 var thumbnailCmd = &cobra.Command{
 	Use: "remove-thumbnails",
 	Run: func(cmd *cobra.Command, args []string) {
-		client, err = aspace.NewClient(config, "fade", 20)
+		client, err = aspace.NewClient(config, env, 20)
 		if err != nil {
 			panic(err)
 		}
@@ -37,7 +39,7 @@ func removeThumbs() {
 	}
 
 	t := time.Now()
-	tf := t.Format("20060102-15-04")
+	tf := t.Format("20060102-03-04")
 	outfile, err := os.Create("thumbnail-updated" + tf + ".tsv")
 	if err != nil {
 		panic(err)
@@ -45,8 +47,12 @@ func removeThumbs() {
 	defer outfile.Close()
 
 	writer := bufio.NewWriter(outfile)
+	writer.WriteString("timestamp\tworkerID\tresult\taspaceURL\tmessage\n")
+	writer.Flush()
+
 	for range chunks {
-		for _, result := range <-resultChannel {
+		results := <-resultChannel
+		for _, result := range results {
 			writer.WriteString(fmt.Sprintf("%s\t%d\t%s\t%s\t%s\n", result.Time.Format(time.RFC3339), result.Worker, result.Code, result.URI, result.Msg))
 			writer.Flush()
 		}
@@ -76,24 +82,34 @@ func removeThumbnails(chunk []ObjectID, resultChannel chan []Result, worker int)
 			if do.ContainsUseStatement("image-thumbnail") == true {
 				//delete any dos that only have a thumbnail
 				if len(do.FileVersions) == 1 {
-					response, err := client.DeleteDigitalObject(doid.RepoID, doid.ObjectID)
-					if err != nil {
-						results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now(), worker})
+					if !test {
+						response, err := client.DeleteDigitalObject(doid.RepoID, doid.ObjectID)
+						if err != nil {
+							results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now(), worker})
+							continue
+						}
+						results = append(results, Result{"DELETED", do.URI, fmt.Sprintf("%s", strings.ReplaceAll(response, "\n", "")), time.Now(), worker})
+						continue
+					} else {
+						results = append(results, Result{"SKIPPED", do.URI, fmt.Sprintf("TEST-MODE, DO deletion skipped"), time.Now(), worker})
 						continue
 					}
-					results = append(results, Result{"DELETED", do.URI, fmt.Sprintf("%s", strings.ReplaceAll(response, "\n", "")), time.Now(), worker})
-					continue
 				}
 
 				//update dos with more than one file versions
 				do.FileVersions = updateFileVersions(do)
-				response, err := client.UpdateDigitalObject(doid.RepoID, doid.ObjectID, do)
-				if err != nil {
-					results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now(), worker})
+				if !test {
+					response, err := client.UpdateDigitalObject(doid.RepoID, doid.ObjectID, do)
+					if err != nil {
+						results = append(results, Result{"ERROR", do.URI, err.Error(), time.Now(), worker})
+						continue
+					}
+					results = append(results, Result{"UPDATED", do.URI, fmt.Sprintf("%s", strings.ReplaceAll(response, "\n", "")), time.Now(), worker})
+					continue
+				} else {
+					results = append(results, Result{"SKIPPED", do.URI, fmt.Sprintf("Test-Mode, DO update skipped"), time.Now(), worker})
 					continue
 				}
-				results = append(results, Result{"UPDATED", do.URI, fmt.Sprintf("%s", strings.ReplaceAll(response, "\n", "")), time.Now(), worker})
-				continue
 			} else {
 				results = append(results, Result{"SKIPPED", do.URI, fmt.Sprintf("No image-thumbnails in file versions"), time.Now(), worker})
 				continue

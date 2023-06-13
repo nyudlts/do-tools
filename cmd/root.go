@@ -8,6 +8,6 @@ import (
 var rootCmd = &cobra.Command{
 	Use: "do-tools",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("**DO TOOLS**")
+		fmt.Println("** ASPACE DO TOOLS **")
 	},
 }

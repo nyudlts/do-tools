@@ -14,6 +14,7 @@ import (
 func init() {
 	updateCmd.PersistentFlags().StringVarP(&config, "config", "c", "", "")
 	updateCmd.PersistentFlags().StringVar(&env, "environment", "", "")
+	updateCmd.PersistentFlags().BoolVar(&test, "test", false, "")
 	rootCmd.AddCommand(updateCmd)
 }
 
@@ -41,14 +42,24 @@ func updateRoles() {
 	}
 
 	t := time.Now()
-	tf := t.Format("20060102T15:04")
-	outfile, _ := os.Create("update-roles-" + tf + ".tsv")
+	tf := t.Format("20060102-03-04")
+	var outfile *os.File
+	if test {
+		outfile, _ = os.Create("update-roles-TEST-" + tf + ".tsv")
+
+	} else {
+		outfile, _ = os.Create("update-roles" + tf + ".tsv")
+	}
 	defer outfile.Close()
+
 	writer := bufio.NewWriter(outfile)
+	writer.WriteString("timestamp\tworkerID\tresult\taspaceURL\tmessage\n")
+	writer.Flush()
 
 	for range doChunks {
 		for _, result := range <-resultChannel {
-			writer.WriteString(result.String())
+			writer.WriteString(fmt.Sprintf("%s\t%d\t%s\t%s\t%s\n", result.Time.Format(time.RFC3339), result.Worker, result.Code, result.URI, result.Msg))
+			writer.Flush()
 		}
 	}
 }
@@ -77,12 +88,21 @@ func updateRoleChunk(chunk []ObjectID, resultChannel chan []Result, workerID int
 		//check for blank roles
 		if hasUndefinedFV(fileVersions) == true {
 			do.FileVersions = updateFileVersionRoles(fileVersions)
-			msg, err := client.UpdateDigitalObject(oid.RepoID, oid.ObjectID, do)
-			if err != nil {
-				results = append(results, Result{Code: "ERROR", URI: do.URI, Msg: err.Error(), Time: time.Time{}, Worker: workerID})
+
+			if !test {
+				msg, err := client.UpdateDigitalObject(oid.RepoID, oid.ObjectID, do)
+				if err != nil {
+					results = append(results, Result{Code: "ERROR", URI: do.URI, Msg: err.Error(), Time: time.Time{}, Worker: workerID})
+					continue
+				}
+				results = append(results, Result{Code: "UPDATED", URI: do.URI, Msg: strings.ReplaceAll(msg, "\n", ""), Time: time.Time{}, Worker: workerID})
+				continue
+			} else {
+				results = append(results, Result{"SKIPPED", do.URI, "TEST-MODE Skipping", time.Now(), workerID})
 				continue
 			}
-			results = append(results, Result{Code: "UPDATED", URI: do.URI, Msg: strings.ReplaceAll(msg, "\n", ""), Time: time.Time{}, Worker: workerID})
+		} else {
+			results = append(results, Result{"SKIPPED", do.URI, "No Valid Critera Found", time.Now(), workerID})
 			continue
 		}
 	}

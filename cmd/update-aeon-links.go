@@ -6,53 +6,50 @@ import (
 	"github.com/nyudlts/go-aspace"
 	"github.com/spf13/cobra"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 )
 
 func init() {
-	convertHandlesCmd.PersistentFlags().StringVar(&config, "config", "", "")
-	convertHandlesCmd.PersistentFlags().StringVar(&env, "environment", "", "")
-	convertHandlesCmd.PersistentFlags().BoolVar(&test, "test", false, "")
-	rootCmd.AddCommand(convertHandlesCmd)
+	aeonCmd.PersistentFlags().StringVarP(&config, "config", "c", "", "")
+	aeonCmd.PersistentFlags().StringVarP(&env, "environment", "e", "", "")
+	aeonCmd.PersistentFlags().BoolVar(&test, "test", false, "")
+	rootCmd.AddCommand(aeonCmd)
 }
 
-var httpMatch = regexp.MustCompile("^http://hdl.handle")
-
-var convertHandlesCmd = &cobra.Command{
-	Use: "convert-http-handles",
+var aeonCmd = &cobra.Command{
+	Use: "update-aeon-links",
 	Run: func(cmd *cobra.Command, args []string) {
 		setClient()
-		convertHandles()
-		if err != nil {
-			panic(err)
-		}
+		updateAeon()
 	},
 }
 
-func convertHandles() {
+func updateAeon() {
+
 	GetDOIDs()
 	doChunks := getChunks(dos)
+
 	resultChannel := make(chan []Result)
+
 	for i, doChunk := range doChunks {
-		go updateHttp(doChunk, resultChannel, i+1)
+		go updateAeonLinks(doChunk, resultChannel, i+1)
 	}
+
 	t := time.Now()
 	tf := t.Format("20060102-03-04")
 	var outfile *os.File
 	if test {
-		outfile, _ = os.Create("http-updates-TEST-" + tf + ".tsv")
+		outfile, _ = os.Create("aeon-updates-TEST-" + tf + ".tsv")
 
 	} else {
-		outfile, _ = os.Create("http-updates-" + tf + ".tsv")
+		outfile, _ = os.Create("aeon-updates-" + tf + ".tsv")
 	}
 	defer outfile.Close()
 
 	writer := bufio.NewWriter(outfile)
 	writer.WriteString("timestamp\tworkerID\tresult\taspaceURL\tmessage\n")
 	writer.Flush()
-
 	for range doChunks {
 		results := <-resultChannel
 		for _, result := range results {
@@ -60,10 +57,12 @@ func convertHandles() {
 			writer.Flush()
 		}
 	}
+
 	writer.Flush()
+
 }
 
-func updateHttp(doChunk []ObjectID, resultChannel chan []Result, worker int) {
+func updateAeonLinks(doChunk []ObjectID, resultChannel chan []Result, worker int) {
 	results := []Result{}
 	fmt.Printf("Worker %d started, processing %d records\n", worker, len(doChunk))
 
@@ -79,16 +78,17 @@ func updateHttp(doChunk []ObjectID, resultChannel chan []Result, worker int) {
 			continue
 		}
 
-		http := false
+		aeonLinks := false
+
 		for _, fv := range do.FileVersions {
-			if httpMatch.MatchString(fv.FileURI) {
-				http = true
+			if strings.Contains(fv.FileURI, "https://aeon.library.nyu.edu") {
+				aeonLinks = true
 				break
 			}
 		}
 
-		if http {
-			newFV := updateHttpURI(do.FileVersions)
+		if aeonLinks == true {
+			newFV := updateAeonURI(do.FileVersions)
 			do.FileVersions = newFV
 			if !test {
 				response, err := client.UpdateDigitalObject(doid.RepoID, doid.ObjectID, do)
@@ -103,20 +103,21 @@ func updateHttp(doChunk []ObjectID, resultChannel chan []Result, worker int) {
 				continue
 			}
 		} else {
-			results = append(results, Result{"SKIPPED", do.URI, fmt.Sprintf("No http handles found in file versions"), time.Now(), worker})
+			results = append(results, Result{"SKIPPED", do.URI, fmt.Sprintf("No aeon links in file versions"), time.Now(), worker})
 			continue
 		}
+
 	}
 
 	fmt.Printf("Worker %d finished\n", worker)
 	resultChannel <- results
 }
 
-func updateHttpURI(fvs []aspace.FileVersion) []aspace.FileVersion {
+func updateAeonURI(fvs []aspace.FileVersion) []aspace.FileVersion {
 	newFileVersions := []aspace.FileVersion{}
 	for _, fv := range fvs {
-		if httpMatch.MatchString(fv.FileURI) {
-			fv.FileURI = strings.ReplaceAll(fv.FileURI, "http://hdl.handle", "https://hdl.handle")
+		if strings.Contains(fv.FileURI, "https://aeon.library.nyu.edu") {
+			fv.FileURI = "https://hdl.handle.net/2333.1/material-request-placeholder"
 		}
 		newFileVersions = append(newFileVersions, fv)
 	}

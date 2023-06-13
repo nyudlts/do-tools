@@ -12,7 +12,7 @@ import (
 
 func init() {
 	reportCmd.PersistentFlags().StringVarP(&config, "config", "c", "", "")
-	reportCmd.PersistentFlags().StringVar(&env, "environment", "", "")
+	reportCmd.PersistentFlags().StringVarP(&env, "environment", "e", "", "")
 	rootCmd.AddCommand(reportCmd)
 }
 

@@ -14,13 +14,14 @@ import (
 func init() {
 	locationCmd.PersistentFlags().StringVar(&config, "config", "", "")
 	locationCmd.PersistentFlags().StringVar(&env, "environment", "", "")
+	locationCmd.PersistentFlags().BoolVar(&test, "test", false, "")
 	rootCmd.AddCommand(locationCmd)
 }
 
 var resources []ObjectID
 
 var locationCmd = &cobra.Command{
-	Use: "ead-locations",
+	Use: "update-ead-locations",
 	Run: func(cmd *cobra.Command, args []string) {
 		setClient()
 		updateLocations()
@@ -37,8 +38,14 @@ func updateLocations() {
 	}
 
 	t := time.Now()
-	tf := t.Format("20060102T15:04")
-	outfile, _ := os.Create("ead-locations-" + tf + ".tsv")
+	tf := t.Format("20060102-03-04")
+	var outfile *os.File
+	if test {
+		outfile, _ = os.Create("ead-locations-TEST-" + tf + ".tsv")
+
+	} else {
+		outfile, _ = os.Create("ead-locations-" + tf + ".tsv")
+	}
 	defer outfile.Close()
 	writer := bufio.NewWriter(outfile)
 	for range resourceChunks {
@@ -53,7 +60,7 @@ func updateLocation(resourceChunk []ObjectID, resultChannel chan []Result, worke
 	results := []Result{}
 	fmt.Printf("* worker %d started, processing %d resources\n", workerID, len(resourceChunk))
 	for i, resourceID := range resourceChunk {
-
+		log.Println("updating: ", resourceID.RepoID, resourceID.ObjectID)
 		resource, err := client.GetResource(resourceID.RepoID, resourceID.ObjectID)
 		if err != nil {
 			results = append(results, Result{Code: "ERROR", URI: resourceID.String(), Msg: strings.ReplaceAll(err.Error(), "\n", ""), Time: time.Now(), Worker: workerID})
@@ -78,16 +85,20 @@ func updateLocation(resourceChunk []ObjectID, resultChannel chan []Result, worke
 			continue
 		}
 
-		code, msg, err := client.UpdateResourceJson(resourceID.RepoID, resourceID.ObjectID, updateJson)
-		if err != nil {
-			results = append(results, Result{Code: "ERROR", URI: resourceID.String(), Msg: strings.ReplaceAll(err.Error(), "\n", ""), Time: time.Now(), Worker: workerID})
+		if !test {
+			code, msg, err := client.UpdateResourceJson(resourceID.RepoID, resourceID.ObjectID, updateJson)
+			if err != nil {
+				results = append(results, Result{Code: "ERROR", URI: resourceID.String(), Msg: strings.ReplaceAll(err.Error(), "\n", ""), Time: time.Now(), Worker: workerID})
+				continue
+			}
+
+			result := Result{Code: "SUCCESS", URI: resource.URI, Msg: fmt.Sprintf("%d: %s", code, strings.ReplaceAll(msg, "\n", "")), Time: time.Now(), Worker: workerID}
+			log.Println(result)
+			results = append(results, result)
+		} else {
+			results = append(results, Result{Code: "SKIPPED", URI: resourceID.String(), Msg: "TEST-MODE", Time: time.Now(), Worker: workerID})
 			continue
 		}
-
-		result := Result{Code: "SUCCESS", URI: resource.URI, Msg: fmt.Sprintf("%d: %s", code, strings.ReplaceAll(msg, "\n", "")), Time: time.Now(), Worker: workerID}
-		log.Println(result)
-		results = append(results, result)
-
 		if i > 1 && (i)%25 == 0 {
 			fmt.Printf("* worker %d completed %d resources\n", workerID, i)
 		}

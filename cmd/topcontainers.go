@@ -13,6 +13,7 @@ import (
 func init() {
 	tcCmd.PersistentFlags().StringVarP(&config, "config", "c", "", "")
 	tcCmd.PersistentFlags().StringVarP(&env, "environment", "e", "", "")
+	tcCmd.PersistentFlags().BoolVar(&test, "test", false, "")
 	rootCmd.AddCommand(tcCmd)
 }
 
@@ -24,7 +25,7 @@ var (
 )
 
 var tcCmd = &cobra.Command{
-	Use: "top-containers",
+	Use: "remove-top-containers",
 	Run: func(cmd *cobra.Command, args []string) {
 		setClient()
 		getTCids()
@@ -37,13 +38,19 @@ var tcCmd = &cobra.Command{
 		}
 
 		t := time.Now()
-		tf := t.Format("20060102T15:04")
-		outfile, _ := os.Create("topcontainers-" + tf + ".tsv")
+		tf := t.Format("20060102-03-04")
+		var outfile *os.File
+		if test {
+			outfile, _ = os.Create("topcontainers-TEST-" + tf + ".tsv")
+		} else {
+			outfile, _ = os.Create("topcontainers-" + tf + ".tsv")
+		}
 		defer outfile.Close()
 		writer := bufio.NewWriter(outfile)
 
 		for range tcChunks {
-			for _, result := range <-resultChannel {
+			results := <-resultChannel
+			for _, result := range results {
 				writer.WriteString(result.String())
 			}
 			writer.Flush()
@@ -55,7 +62,7 @@ func removeTopContainers(tcChunk []ObjectID, resultChannel chan []Result, worker
 	results := []Result{}
 	fmt.Printf("Worker %d processing %d top containers\n", worker, len(tcChunk))
 	for i, objectId := range tcChunk {
-		if i-1 > 0 && (i-1)%100 == 0 {
+		if i-1 > 0 && (i-1)%500 == 0 {
 			fmt.Printf("Worker %d completed %d top containers\n", worker, i-1)
 		}
 		tc, err := client.GetTopContainer(objectId.RepoID, objectId.ObjectID)
@@ -64,13 +71,18 @@ func removeTopContainers(tcChunk []ObjectID, resultChannel chan []Result, worker
 			continue
 		}
 		if erecs.MatchString(strings.ToLower(tc.DisplayString)) || erec.MatchString(strings.ToLower(tc.DisplayString)) {
-			msg, err := client.DeleteTopContainer(objectId.RepoID, objectId.ObjectID)
-			if err != nil {
-				results = append(results, Result{"ERROR", tc.URI, err.Error(), time.Now(), worker})
+			if !test {
+				msg, err := client.DeleteTopContainer(objectId.RepoID, objectId.ObjectID)
+				if err != nil {
+					results = append(results, Result{"ERROR", tc.URI, err.Error(), time.Now(), worker})
+					continue
+				}
+				results = append(results, Result{"DELETED", tc.URI, strings.ReplaceAll(msg, "\n", ""), time.Now(), worker})
+				continue
+			} else {
+				results = append(results, Result{"SKIPPED", tc.URI, strings.ReplaceAll("TEST-MODE", "\n", ""), time.Now(), worker})
 				continue
 			}
-			results = append(results, Result{"DELETED", tc.URI, strings.ReplaceAll(msg, "\n", ""), time.Now(), worker})
-			continue
 		}
 		results = append(results, Result{"SKIPPED", tc.URI, "", time.Now(), worker})
 	}

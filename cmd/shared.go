@@ -14,7 +14,8 @@ var (
 	workers         = 12
 	err             error
 	config          string
-	repositoryCodes = map[int]string{2: "tamwag", 3: "fales", 6: "nyuarchives"}
+	repositoryCodes      = map[int]string{2: "tamwag", 3: "fales", 6: "nyuarchives"}
+	test            bool = true
 )
 
 type JsonResponse map[string]interface{}
