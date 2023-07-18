@@ -42,13 +42,13 @@ func updateRoles() {
 	}
 
 	t := time.Now()
-	tf := t.Format("20060102-03-04")
+	tf := t.Format("20060102-030405")
 	var outfile *os.File
 	if test {
-		outfile, _ = os.Create("update-roles-TEST-" + tf + ".tsv")
+		outfile, _ = os.Create("update-roles-" + env + "-TEST-" + tf + ".tsv")
 
 	} else {
-		outfile, _ = os.Create("update-roles" + tf + ".tsv")
+		outfile, _ = os.Create("update-roles-" + env + "-" + tf + ".tsv")
 	}
 	defer outfile.Close()
 

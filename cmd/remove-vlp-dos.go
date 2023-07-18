@@ -28,7 +28,7 @@ func init() {
 }
 
 var vlpCmd = &cobra.Command{
-	Use: "remove-vlp",
+	Use: "remove-vlp-dos",
 	Run: func(cmd *cobra.Command, args []string) {
 		setClient()
 		if err = removeVLP(); err != nil {
@@ -53,10 +53,10 @@ func removeVLP() error {
 	tf := t.Format("20060102-030405")
 	var outfile *os.File
 	if test {
-		outfile, _ = os.Create("update-vlp-TEST-" + tf + ".tsv")
+		outfile, _ = os.Create("remove-vlp-dos" + env + "-TEST-" + tf + ".tsv")
 
 	} else {
-		outfile, _ = os.Create("update-vlp-" + tf + ".tsv")
+		outfile, _ = os.Create("remove-vlp-dos" + env + "-" + tf + ".tsv")
 	}
 	defer outfile.Close()
 

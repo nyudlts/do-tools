@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/spf13/cobra"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -21,7 +20,7 @@ func init() {
 var resources []ObjectID
 
 var locationCmd = &cobra.Command{
-	Use: "update-ead-locations",
+	Use: "ead-locations",
 	Run: func(cmd *cobra.Command, args []string) {
 		setClient()
 		updateLocations()
@@ -38,13 +37,13 @@ func updateLocations() {
 	}
 
 	t := time.Now()
-	tf := t.Format("20060102-03-04")
+	tf := t.Format("20060102-030405")
 	var outfile *os.File
 	if test {
-		outfile, _ = os.Create("ead-locations-TEST-" + tf + ".tsv")
+		outfile, _ = os.Create("ead-locations-" + env + "-TEST-" + tf + ".tsv")
 
 	} else {
-		outfile, _ = os.Create("ead-locations-" + tf + ".tsv")
+		outfile, _ = os.Create("ead-locations-" + env + "-" + tf + ".tsv")
 	}
 	defer outfile.Close()
 	writer := bufio.NewWriter(outfile)
@@ -60,7 +59,10 @@ func updateLocation(resourceChunk []ObjectID, resultChannel chan []Result, worke
 	results := []Result{}
 	fmt.Printf("* worker %d started, processing %d resources\n", workerID, len(resourceChunk))
 	for i, resourceID := range resourceChunk {
-		log.Println("updating: ", resourceID.RepoID, resourceID.ObjectID)
+		//log.Println("updating: ", resourceID.RepoID, resourceID.ObjectID)
+		if i > 0 && i%500 == 0 {
+			fmt.Printf("Worker %d has completed %d digital objects\n", workerID, i)
+		}
 		resource, err := client.GetResource(resourceID.RepoID, resourceID.ObjectID)
 		if err != nil {
 			results = append(results, Result{Code: "ERROR", URI: resourceID.String(), Msg: strings.ReplaceAll(err.Error(), "\n", ""), Time: time.Now(), Worker: workerID})
@@ -93,7 +95,7 @@ func updateLocation(resourceChunk []ObjectID, resultChannel chan []Result, worke
 			}
 
 			result := Result{Code: "SUCCESS", URI: resource.URI, Msg: fmt.Sprintf("%d: %s", code, strings.ReplaceAll(msg, "\n", "")), Time: time.Now(), Worker: workerID}
-			log.Println(result)
+			//log.Println(result)
 			results = append(results, result)
 		} else {
 			results = append(results, Result{Code: "SKIPPED", URI: resourceID.String(), Msg: "TEST-MODE", Time: time.Now(), Worker: workerID})

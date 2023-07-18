@@ -39,11 +39,15 @@ func removeThumbs() {
 	}
 
 	t := time.Now()
-	tf := t.Format("20060102-03-04")
-	outfile, err := os.Create("thumbnail-updated" + tf + ".tsv")
-	if err != nil {
-		panic(err)
+	tf := t.Format("20060102-030405")
+	var outfile *os.File
+	if test {
+		outfile, _ = os.Create("remove-thumbnails-" + env + "-TEST-" + tf + ".tsv")
+
+	} else {
+		outfile, _ = os.Create("remove-thumbnails-" + env + "-" + tf + ".tsv")
 	}
+
 	defer outfile.Close()
 
 	writer := bufio.NewWriter(outfile)

@@ -16,6 +16,20 @@ func init() {
 	rootCmd.AddCommand(reportCmd)
 }
 
+var outliers = []string{"audio-master", "video-master", "image-master", "image-master-edited", "electronic-records-master", "undefined"}
+
+func isOutlier(role string) bool {
+	for _, r := range outliers {
+		if r == role {
+			fmt.Println(true, role)
+			return true
+		}
+	}
+	return false
+}
+
+var outfile *os.File
+
 var reportCmd = &cobra.Command{
 	Use:   "report",
 	Short: "Generate a report of use statements",
@@ -27,6 +41,7 @@ var reportCmd = &cobra.Command{
 }
 
 func ReportDOs() {
+
 	GetDOIDs()
 	doChunks := getChunks(dos)
 
@@ -53,6 +68,7 @@ func ReportDOs() {
 	}
 	GenerateRoleReport(results)
 	PrintRoleMap(results)
+	udefWriter.Flush()
 }
 
 func GenerateRoleReport(roles map[string]int) {
@@ -98,12 +114,19 @@ func GetRoles(chunk []ObjectID, resultsChannel chan map[string]int, worker int, 
 				if role == "" {
 					role = "undefined"
 				}
+
+				if isOutlier(role) && do.Publish {
+					writer.WriteString(fmt.Sprintf("%s\t%s\n", role, do.URI))
+					writer.Flush()
+				}
+
 				if HasRole(results, role) == true {
 					results[role] = results[role] + 1
 				} else {
 					results[role] = 1
 				}
 			}
+
 		}
 	}
 	resultsChannel <- results

@@ -3,7 +3,7 @@ module github.com/nyudlts/do-tools
 go 1.20
 
 require (
-	github.com/nyudlts/go-aspace v0.3.8-0.20221116172756-085ffbe26df2
+	github.com/nyudlts/go-aspace v0.3.8-0.20230621131623-0415925aa212
 	github.com/spf13/cobra v1.3.0
 )
 
@@ -14,5 +14,3 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
-
-replace github.com/nyudlts/go-aspace => /home/menneric/projects/go-aspace
