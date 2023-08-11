@@ -1,4 +1,4 @@
-module github.com/nyudlts/do-tools
+module github.com/nyudlts/aspace-migration
 
 go 1.20
 

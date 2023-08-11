@@ -43,7 +43,7 @@ func updateAeon() {
 		outfile, _ = os.Create("update-aeon-urls-" + env + "-TEST-" + tf + ".tsv")
 
 	} else {
-		outfile, _ = os.Create("aeon-updates-" + env + "-" + tf + ".tsv")
+		outfile, _ = os.Create("update-aeon-urls-" + env + "-" + tf + ".tsv")
 	}
 	defer outfile.Close()
 

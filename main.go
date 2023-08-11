@@ -1,6 +1,6 @@
 package main
 
-import "github.com/nyudlts/do-tools/cmd"
+import "github.com/nyudlts/aspace-migration/cmd"
 
 func main() {
 	cmd.Execute()

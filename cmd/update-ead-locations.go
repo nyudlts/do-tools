@@ -20,7 +20,7 @@ func init() {
 var resources []ObjectID
 
 var locationCmd = &cobra.Command{
-	Use: "ead-locations",
+	Use: "update-ead-locations",
 	Run: func(cmd *cobra.Command, args []string) {
 		setClient()
 		updateLocations()
