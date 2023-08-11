@@ -21,7 +21,7 @@ func init() {
 var httpMatch = regexp.MustCompile("^http://hdl.handle")
 
 var convertHandlesCmd = &cobra.Command{
-	Use: "convert-handles",
+	Use: "convert-http-handles",
 	Run: func(cmd *cobra.Command, args []string) {
 		setClient()
 		convertHandles()
@@ -42,10 +42,10 @@ func convertHandles() {
 	tf := t.Format("20060102-030405")
 	var outfile *os.File
 	if test {
-		outfile, _ = os.Create("http-updates-" + env + "-TEST-" + tf + ".tsv")
+		outfile, _ = os.Create("convert-http-handles-" + env + "-TEST-" + tf + ".tsv")
 
 	} else {
-		outfile, _ = os.Create("http-updates-" + env + "-" + tf + ".tsv")
+		outfile, _ = os.Create("convert-http-handles-" + env + "-" + tf + ".tsv")
 	}
 	defer outfile.Close()
 
