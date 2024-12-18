@@ -5,7 +5,7 @@ go 1.21
 toolchain go1.23.0
 
 require (
-	github.com/nyudlts/go-aspace v0.7.1-0.20241204005806-d440c2a9c03f
+	github.com/nyudlts/go-aspace v0.7.1
 	github.com/spf13/cobra v1.3.0
 )
 
