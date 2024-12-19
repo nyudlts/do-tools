@@ -13,11 +13,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	rootCmd.AddCommand(doCmd)
-	doCmd.AddCommand(doRefreshCmd)
-}
-
 // --------------------------------------------------------------------------------
 // Flags and Parameters
 var aoURI string
